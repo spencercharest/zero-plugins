@@ -1,0 +1,16 @@
+{
+  "name": "zero-plugins",
+  "owner": { "name": "Zero" },
+  "metadata": {
+    "description": "Official Zero plugins — discover and pay for AI capabilities from any agent.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "zero",
+      "source": "./plugins/zero",
+      "description": "Discover and call paid AI capabilities (x402 / MPP) with automatic, wallet-backed payment. Bundles the 'zero' skill and the Zero MCP connector.",
+      "category": "Productivity"
+    }
+  ]
+}

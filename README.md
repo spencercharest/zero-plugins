@@ -5,9 +5,9 @@ layer for AI agents: discover external paid capabilities (x402 / MPP) — image,
 audio, web scraping, real-time data, messaging, and more — call them, and pay per use
 with a wallet. No per-service signup.
 
-This repo is a **cross-agent plugin marketplace**. The same plugin tree publishes to both
-**Claude Code** and **OpenAI Codex**; each platform reads its own manifest and marketplace
-catalog while sharing one set of components.
+This repo is a **cross-agent plugin marketplace**. The same plugin tree publishes to
+**Claude Code**, **OpenAI Codex**, and **Cursor**; each platform reads its own manifest
+and marketplace catalog while sharing one set of components.
 
 ## Layout
 
@@ -15,16 +15,19 @@ catalog while sharing one set of components.
 zero-plugins/
 ├── .claude-plugin/marketplace.json     # Claude Code marketplace catalog
 ├── .agents/plugins/marketplace.json    # Codex marketplace catalog
-└── plugins/zero/                       # the "zero" plugin (shared across both)
+├── .cursor-plugin/marketplace.json     # Cursor marketplace catalog
+└── plugins/zero/                       # the "zero" plugin (shared across all)
     ├── .claude-plugin/plugin.json      #   Claude Code manifest
     ├── .codex-plugin/plugin.json       #   Codex manifest
+    ├── .cursor-plugin/plugin.json      #   Cursor manifest
     ├── .mcp.json                       #   Zero MCP connector
     └── skills/zero/SKILL.md            #   the zero skill
 ```
 
-A single plugin directory carries both a `.claude-plugin/` and a `.codex-plugin/`
-manifest. Each agent reads only its own manifest and ignores the other's, so the skill,
-MCP connector, and hooks are authored once and shared.
+A single plugin directory carries one manifest per platform (`.claude-plugin/`,
+`.codex-plugin/`, `.cursor-plugin/`). Each agent reads only its own manifest and ignores
+the others, so the skill, MCP connector, and hooks are authored once and shared. Cursor's
+manifest points `mcpServers` at the same `.mcp.json` the others use.
 
 ## Install
 
@@ -40,6 +43,13 @@ MCP connector, and hooks are authored once and shared.
 ```
 /plugins
 # add this repo as a marketplace source, then install "zero"
+```
+
+**Cursor:**
+
+```
+/add-plugin
+# add this repo as a marketplace source (.cursor-plugin/marketplace.json), then install "zero"
 ```
 
 ## The `zero` plugin
