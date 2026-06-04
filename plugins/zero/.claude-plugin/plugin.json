@@ -5,6 +5,5 @@
   "author": { "name": "Zero", "url": "https://zero.xyz" },
   "homepage": "https://zero.xyz",
   "license": "MIT",
-  "keywords": ["zero", "x402", "mpp", "payments", "capabilities", "mcp", "agent-tools"],
-  "hooks": "./hooks/hooks.json"
+  "keywords": ["zero", "x402", "mpp", "payments", "capabilities", "mcp", "agent-tools"]
 }

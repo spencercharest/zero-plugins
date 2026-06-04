@@ -9,7 +9,6 @@
   "keywords": ["zero", "x402", "mpp", "payments", "capabilities", "mcp", "agent-tools"],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
-  "hooks": "./hooks/hooks.json",
   "interface": {
     "displayName": "Zero",
     "shortDescription": "Search and pay for AI capabilities from any agent.",
