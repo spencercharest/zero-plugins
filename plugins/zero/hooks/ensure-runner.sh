@@ -16,7 +16,7 @@
 # `exec <node> <zero.mjs> "$@"` so $ZERO_RUNNER stays a single path.
 #
 # Runner versioning: the bundle is pinned to a MAJOR channel derived from this
-# plugin's own manifest version — `releases.zero.xyz/latest-v<major>/zero.mjs`.
+# plugin's own manifest version — `releases.zero.xyz/v<major>-latest/zero.mjs`.
 # Patches/minors within that major auto-update via a throttled conditional GET;
 # a breaking runner change ships a new major, which only takes effect when the
 # plugin manifest is bumped to that major. Override the whole channel with
@@ -74,7 +74,7 @@ read_major() {
 }
 
 MAJOR="$(read_major)"
-CHANNEL="${ZERO_RUNNER_CHANNEL:-latest-v$MAJOR}"
+CHANNEL="${ZERO_RUNNER_CHANNEL:-v$MAJOR-latest}"
 MJS_URL="$BIN_BASE/$CHANNEL/zero.mjs"
 
 # Standing, mode-neutral Zero reminder appended to the session-start context, so the

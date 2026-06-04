@@ -96,20 +96,18 @@ both set `$CLAUDE_PLUGIN_ROOT`) provisions the runner and exports `$ZERO_RUNNER`
   macOS/Linux: `.tar.gz` + extract behind a stable `current` symlink) and reuses it on every
   later session.
 - **Runner bundle** — fetches `zero.mjs` from a **major channel** derived from this plugin's
-  manifest version: `releases.zero.xyz/latest-v<major>/zero.mjs`. Patches and minors within
-  the major auto-update via a throttled conditional GET; a new major only takes effect when
-  the manifest is bumped to it.
+  manifest version: `releases.zero.xyz/v<major>-latest/zero.mjs` (e.g. `v0-latest` for the
+  current `0.x` manifests). Patches and minors within the major auto-update via a throttled
+  conditional GET; a new major only takes effect when the manifest is bumped to it.
 - Everything lands under `$CLAUDE_PLUGIN_DATA` (persists across plugin updates, removed on
   uninstall), falling back to `~/.zero` when unset.
 
-> **Release-pipeline requirement:** the channel `releases.zero.xyz/latest-v<major>/zero.mjs`
-> must be published by the runner release pipeline. Today only `latest/` and exact `v<tag>/`
-> paths exist — until `latest-v<major>/` is served, point the hook at the floating channel
-> with `ZERO_RUNNER_CHANNEL=latest`.
+The `v<major>-latest` channel is served by the runner release pipeline (`v0-latest` is live).
+Override the whole channel segment with `ZERO_RUNNER_CHANNEL` if needed.
 
 | Env override | Default | Purpose |
 |---|---|---|
-| `ZERO_RUNNER_CHANNEL` | `latest-v<major>` | Runner bundle channel segment. |
+| `ZERO_RUNNER_CHANNEL` | `v<major>-latest` | Runner bundle channel segment. |
 | `ZERO_BIN_BASE` | `https://releases.zero.xyz` | Base URL for the `zero.mjs` bundle. |
 | `ZERO_NODE_MIN_MAJOR` | `20` | A system `node` older than this triggers a download. |
 | `ZERO_NODE_CHANNEL` | `latest-v24.x` | Official Node release line to download when needed. |
