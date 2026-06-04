@@ -59,11 +59,14 @@ yourself. It's the bundled `zero.mjs` (all deps inlined) run on Node, behind a o
 `$ZERO_RUNNER` stays a single executable path:
 
 ```bash
-mkdir -p ~/.zero/runner ~/.zero/bin
+mkdir -p ~/.zero/runner ~/.zero/bin ~/.zero/runner-home
 curl -fsSL https://releases.zero.xyz/latest/zero.mjs -o ~/.zero/runner/zero.mjs
-cat > ~/.zero/bin/zero <<'SHIM'
+cat > ~/.zero/bin/zero <<SHIM
 #!/usr/bin/env sh
-exec node "$HOME/.zero/runner/zero.mjs" "$@"
+# Isolated HOME so the runner uses its own config dir (~/.zero/runner-home/.zero), never
+# the user's ~/.zero wallet. Auth is the MCP-minted ZERO_SESSION_TOKEN; ZERO_PRIVATE_KEY
+# is still honored for BYO signing.
+exec env HOME="$HOME/.zero/runner-home" node "$HOME/.zero/runner/zero.mjs" "\$@"
 SHIM
 chmod +x ~/.zero/bin/zero
 export ZERO_RUNNER=~/.zero/bin/zero
@@ -115,11 +118,15 @@ Zero MCP connector hasn't been authorized yet. **Stop and walk the user through 
 their client's connector/MCP settings, enable the Zero connector and complete the Zero OAuth flow —
 then retry. Don't fall back to creating a local wallet.
 
-**Bring-your-own wallet (user-managed, optional).** If the user has set up their own signing key —
-`ZERO_PRIVATE_KEY=0x…` in the environment, or a `~/.zero/config.json` they created themselves — the
-runner uses it automatically (signing precedence: `ZERO_PRIVATE_KEY` > `~/.zero/config.json` > the
-connector's managed wallet). That's the user's choice; the agent never creates, overwrites, or
-`zero init`s a wallet, and only helps set one up if the user explicitly asks.
+**Isolated config dir.** The plugin's runner runs with its own config directory (under the plugin's
+data dir, removed on uninstall), separate from the CLI's `~/.zero`. It does **not** read or reuse
+`~/.zero/config.json`, so no stale or CLI-created wallet leaks into plugin runs — the connector's
+managed wallet (via the minted session) signs by default.
+
+**Bring-your-own wallet (user-managed, optional).** To sign with your own key, set
+`ZERO_PRIVATE_KEY=0x…` in the runner's environment; the runner honors it (signing precedence:
+`ZERO_PRIVATE_KEY` > the connector's managed wallet). That's the user's choice; the agent never
+creates or `zero init`s a wallet, and only helps set one up if the user explicitly asks.
 
 ### Funding
 
@@ -223,7 +230,8 @@ you have nothing specific. Lost a `runId`? `zero runs --unreviewed` (optionally 
 - **Never provision auth yourself.** Don't run `zero init`, `zero auth login`, `zero wallet …`, or
   `zero welcome`, and don't mention a "welcome bonus." Authenticate only by minting a session with
   `mint_runner_session`; if it isn't authorized, walk the user through authorizing the Zero MCP
-  connector. A BYO wallet, if the user set one up, is used automatically — never create one.
+  connector. The runner uses an isolated, plugin-owned config dir and never reads `~/.zero/config.json`;
+  a BYO key via `ZERO_PRIVATE_KEY` is honored, but never create a wallet.
 - **Read the hook's output first.** In Claude Code / Codex / Cowork the SessionStart hook already
   provisioned the runner and exported `$ZERO_RUNNER` — don't second-guess it or re-bootstrap.
 - **Resolve the runner once, then commit.** Bootstrap (or read `$ZERO_RUNNER`) at the start of the
