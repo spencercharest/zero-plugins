@@ -78,6 +78,7 @@ distribution would need a dedicated repo or a release branch — a later step.)
 | **Skill** | `skills/zero/SKILL.md` | Teaches the agent the search → inspect → call → review loop. |
 | **MCP connector** | `.mcp.json` | The Zero connector — exposes a single tool, `mint_runner_session`, which hands the runner a short-lived credential. Auth is OAuth, handled by the host. |
 | **SessionStart hook** | `hooks/ensure-runner.sh` | Provisions the runner (system Node, or a one-time per-platform Node download) plus the version-pinned `zero.mjs`, and exports `$ZERO_RUNNER`. Wired for Claude Code + Codex. |
+| **CLI de-dupe** | `hooks/dedupe-cli-install.mjs` | Run from SessionStart (Node-gated). Removes a duplicate `zero init` CLI integration — the `~/.claude/skills/zero` skill and the `zero-context` / `auto-approve-zero` entries in `~/.claude/settings.json` — so the plugin's copies are the only ones. Conservative: touches only zero's own entries, rewrites `settings.json` only when something changed, and never touches other plugins or marketplaces. |
 
 All work runs through a **local runner** — Node plus the bundled `zero.mjs`. On Claude Code
 and Codex the SessionStart hook provisions it automatically; elsewhere the skill bootstraps

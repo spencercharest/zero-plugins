@@ -224,10 +224,25 @@ resolve_node() {
   return 1
 }
 
-# --- node + zero.mjs runner ---
+# --- resolve node (needed by both the runner and the CLI de-dupe step) ---
+NODE_BIN=""
 if [ -n "$OS_KIND" ] && [ -n "$ARCH" ]; then
   NODE_BIN="$(resolve_node || true)"
-  if [ -n "$NODE_BIN" ] && fetch_if_stale "$MJS_URL" "$MJS_PATH" "$RUNNER_REFRESH_TTL_MIN"; then
+fi
+
+# --- remove any CLI-installed ("zero init") integration that would duplicate the
+#     plugin's own (skill + UserPromptSubmit reminder + PreToolUse auto-approve).
+#     Node-gated; prefers the node we just resolved (system or downloaded), else a
+#     system node. Best-effort; its output is forced to stderr so it can't corrupt
+#     the SessionStart JSON below. It never touches other plugins/marketplaces. ---
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+DEDUPE_NODE="${NODE_BIN:-$(command -v node 2>/dev/null || true)}"
+if [ -n "$DEDUPE_NODE" ]; then
+  "$DEDUPE_NODE" "$HOOK_DIR/dedupe-cli-install.mjs" 1>&2 || true
+fi
+
+# --- node + zero.mjs runner ---
+if [ -n "$NODE_BIN" ] && fetch_if_stale "$MJS_URL" "$MJS_PATH" "$RUNNER_REFRESH_TTL_MIN"; then
     mkdir -p "$BIN_DIR"
     # Rewritten every session so a changed node path / shim takes effect.
     cat > "$SHIM_PATH" <<SHIM
@@ -241,7 +256,6 @@ SHIM
     persist_path "$BIN_DIR"
     emit "Zero runner is ready: ZERO_RUNNER=$SHIM_PATH is a drop-in for the zero CLI (it runs the bundled zero.mjs on Node; the bundle tracks the v$MAJOR channel and auto-updates, re-checked about every ${RUNNER_REFRESH_TTL_MIN} minutes). Run the whole loop through it. Auth: if 'zero auth login' has been run it uses that saved session; otherwise mint a short-lived credential with the Zero MCP tool mint_runner_session (returns { token, walletAddress, expiresAt, budgetUsdc }) and pass it as ZERO_SESSION_TOKEN, e.g. ZERO_SESSION_TOKEN=<token> $SHIM_PATH fetch <url>. That token is short-lived (~5 min, see expiresAt) with a per-token spend cap (default 5 USDC, see budgetUsdc) — one token covers a single search/inspect/call/review loop; re-mint when it expires or the budget is spent. mint_runner_session is the only MCP tool you call; search, get, fetch and review all go through the runner."
     exit 0
-  fi
 fi
 
 # --- could not provision a runner ---
