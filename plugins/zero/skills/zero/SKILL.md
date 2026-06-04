@@ -41,11 +41,11 @@ Linux, and cloud sandboxes. You drive it with **`$ZERO_RUNNER`** (a drop-in for 
 `$ZERO_RUNNER search "..."`, `$ZERO_RUNNER fetch <url>`. The whole loop — `search`, `get`, `fetch`,
 `review` — goes through the runner.
 
-**The MCP connector has exactly one job: the `mint_runner_session` tool.** It hands the runner a
+**The MCP connector has exactly one job: the `begin_session` tool.** It hands the runner a
 short-lived credential backed by your connector's wallet. That's what makes Zero work on a fresh
 device or an online sandbox where you haven't saved a login — you authorize the connector once (OAuth,
 in your client's settings) and mint a per-task session instead of persisting wallet keys on an
-ephemeral box. `mint_runner_session` is the *only* MCP tool you ever call; everything else is the
+ephemeral box. `begin_session` is the *only* MCP tool you ever call; everything else is the
 runner.
 
 **If a SessionStart hook ran (Claude Code, Codex, Cowork), it already provisioned the runner and
@@ -63,7 +63,7 @@ through authorizing the connector — don't just say it's done:
 
 1. **Runner ready?** Confirm `$ZERO_RUNNER` is set (the SessionStart hook provisions it; if it's
    unset, see "Bootstrap the runner" below).
-2. **Auth working?** Call the **`mint_runner_session`** MCP tool once.
+2. **Auth working?** Call the **`begin_session`** MCP tool once.
    - **It returns a token** (`{ token, walletAddress, … }`) → Zero is ready. Optionally run a free
      `$ZERO_RUNNER search "test"` to confirm the loop end to end, tell the user the connected wallet
      (`walletAddress`), and you're done.
@@ -73,7 +73,7 @@ through authorizing the connector — don't just say it's done:
    (`https://api.zero.xyz/v1/mcp`, OAuth — the host manages the grant). Tell the user to complete the
    Zero authorization in their client: approve the connector's sign-in/OAuth prompt, or open their
    client's connector/MCP settings, enable **Zero**, and finish signing in. Then retry
-   `mint_runner_session`. **Never** set up a local wallet or run `zero init` as a workaround.
+   `begin_session`. **Never** set up a local wallet or run `zero init` as a workaround.
 4. **Funds.** Once connected, the connector's managed wallet pays per call. To add funds or check a
    balance, point the user to their Zero profile at https://zero.xyz/profile — the agent doesn't
    manage funds.
@@ -100,7 +100,7 @@ export ZERO_RUNNER=~/.zero/bin/zero
 
 The shim accepts the same subcommands/flags as the `zero` CLI (`search`, `get`, `fetch`, `review`).
 The `zero.mjs` bundle is small (~5 MB) and self-contained — only a Node runtime is needed, no npm or
-registry. Its credential comes from `mint_runner_session` (below); the agent never installs a wallet
+registry. Its credential comes from `begin_session` (below); the agent never installs a wallet
 of its own.
 
 **No system Node?** Download an official build (it's signed on Windows, notarized on macOS) and point
@@ -123,14 +123,14 @@ The agent authenticates through the MCP connector and **never sets up a wallet i
 run `zero init`, `zero auth login`, `zero wallet …`, or `zero welcome`, and don't tell the user about
 a "welcome bonus." There is no local login to create.
 
-Get a credential by calling the **`mint_runner_session`** MCP tool. It returns
+Get a credential by calling the **`begin_session`** MCP tool. It returns
 `{ token, walletAddress, expiresAt, budgetUsdc }`, backed by the user's connector wallet. **Write the
 token to a private file once and read it back per call — don't paste the raw token inline** (that
 re-prints the secret in every transcript line):
 
 ```bash
 umask 077; mkdir -p ~/.zero
-printf '%s' '<token-from-mint_runner_session>' > ~/.zero/session   # written once, 600-mode
+printf '%s' '<token-from-begin_session>' > ~/.zero/session   # written once, 600-mode
 ZERO_SESSION_TOKEN="$(cat ~/.zero/session)" "$ZERO_RUNNER" fetch "<url>" -d '<json>'
 ```
 
@@ -139,7 +139,7 @@ The token is **short-lived (~5 minutes — see `expiresAt`) and sign-scoped, wit
 **Re-mint (and overwrite the file) the moment a call fails with an auth/expiry error, when you pass
 `expiresAt`, or when a payment would exceed `budgetUsdc`.**
 
-**If `mint_runner_session` is unavailable, or it errors that the connector isn't authorized:** the
+**If `begin_session` is unavailable, or it errors that the connector isn't authorized:** the
 Zero MCP connector hasn't been authorized yet. **Stop and walk the user through authorizing it** — in
 their client's connector/MCP settings, enable the Zero connector and complete the Zero OAuth flow —
 then retry. Don't fall back to creating a local wallet.
@@ -257,7 +257,7 @@ you have nothing specific. Lost a `runId`? `zero runs --unreviewed` (optionally 
 
 - **Never provision auth yourself.** Don't run `zero init`, `zero auth login`, `zero wallet …`, or
   `zero welcome`, and don't mention a "welcome bonus." Authenticate only by minting a session with
-  `mint_runner_session`; if it isn't authorized, walk the user through authorizing the Zero MCP
+  `begin_session`; if it isn't authorized, walk the user through authorizing the Zero MCP
   connector. The runner uses an isolated, plugin-owned config dir and never reads `~/.zero/config.json`;
   a BYO key via `ZERO_PRIVATE_KEY` is honored, but never create a wallet.
 - **Read the hook's output first.** In Claude Code / Codex / Cowork the SessionStart hook already
@@ -267,9 +267,9 @@ you have nothing specific. Lost a `runId`? `zero runs --unreviewed` (optionally 
 - **`$ZERO_RUNNER` empty but `node` present?** Bootstrap the runner yourself (see "Bootstrap the
   runner"). An unset env var is not proof the runner is unavailable.
 - **No runner and can't get one?** If there's no Node runtime and no egress to fetch the bundle, Zero
-  can't run here — say so plainly. `mint_runner_session` only supplies a credential; it can't execute
+  can't run here — say so plainly. `begin_session` only supplies a credential; it can't execute
   calls on its own.
-- **`mint_runner_session` is the only MCP tool.** `search`, `get`, `fetch`, and `review` all run
+- **`begin_session` is the only MCP tool.** `search`, `get`, `fetch`, and `review` all run
   through `$ZERO_RUNNER`.
 - **`zero review` needs `--success` or `--no-success`.** Ratings alone are rejected.
 - **Don't echo `ZERO_SESSION_TOKEN` inline.** Write it to `~/.zero/session` (600-mode) once and read
@@ -286,7 +286,7 @@ you have nothing specific. Lost a `runId`? `zero runs --unreviewed` (optionally 
   balance is clearly low, stop and tell the user to top up at their Zero profile —
   https://zero.xyz/profile. The agent never moves or adds funds itself.
 - **Minted token expired or out of budget?** Tokens last ~5 minutes (`expiresAt`) and carry a
-  per-token spend cap (`budgetUsdc`, default 5 USDC). Call `mint_runner_session` again for a fresh
+  per-token spend cap (`budgetUsdc`, default 5 USDC). Call `begin_session` again for a fresh
   token and overwrite `~/.zero/session` — don't try to keep one alive across a long task.
 - **Before ending a multi-call task, run `zero runs --unreviewed`** and review anything you missed.
 

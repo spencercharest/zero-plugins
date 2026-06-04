@@ -76,7 +76,7 @@ distribution would need a dedicated repo or a release branch — a later step.)
 | Component | File | Purpose |
 |---|---|---|
 | **Skill** | `skills/zero/SKILL.md` | Teaches the agent the search → inspect → call → review loop. |
-| **MCP connector** | `.mcp.json` | The Zero connector — exposes a single tool, `mint_runner_session`, which hands the runner a short-lived credential. Auth is OAuth, handled by the host. |
+| **MCP connector** | `.mcp.json` | The Zero connector — exposes a single tool, `begin_session`, which hands the runner a short-lived credential. Auth is OAuth, handled by the host. |
 | **SessionStart hook** | `hooks/ensure-runner.sh` | Provisions the runner (system Node, or a one-time per-platform Node download) plus the version-pinned `zero.mjs`, and exports `$ZERO_RUNNER`. Wired for Claude Code + Codex. |
 | **CLI de-dupe** | `hooks/dedupe-cli-install.mjs` | Run from SessionStart (Node-gated), **agent-scoped**. Removes the current host's own `zero init` CLI integration so the plugin's copies are the only ones. On Claude Code: deletes `~/.claude/skills/zero` and strips the `zero-context` / `auto-approve-zero` entries from `~/.claude/settings.json`. On Codex: no-op — its CLI skill is in the shared `~/.agents/skills/zero` (also read by Warp/Copilot/Replit/Kiro CLI), so it's intentionally left. Never touches OpenCode, other agents/plugins/marketplaces, or the wallet (`~/.zero/config.json`); rewrites `settings.json` only when something changed. |
 
