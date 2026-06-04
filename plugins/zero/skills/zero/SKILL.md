@@ -75,7 +75,8 @@ through authorizing the connector — don't just say it's done:
    client's connector/MCP settings, enable **Zero**, and finish signing in. Then retry
    `mint_runner_session`. **Never** set up a local wallet or run `zero init` as a workaround.
 4. **Funds.** Once connected, the connector's managed wallet pays per call. To add funds or check a
-   balance, point the user to the Zero web app — the agent doesn't manage funds.
+   balance, point the user to their Zero profile at https://zero.xyz/profile — the agent doesn't
+   manage funds.
 
 ### Bootstrap the runner
 
@@ -156,8 +157,10 @@ creates or `zero init`s a wallet, and only helps set one up if the user explicit
 ### Funding
 
 The agent doesn't manage funds. The signing wallet is the connector's managed wallet (funded by the
-user in the Zero web app) or, if the user set one up, their BYO wallet. If a paid call fails for
-insufficient funds, tell the user to top up their Zero wallet — don't run `zero wallet …` yourself.
+user) or, if the user set one up, their BYO wallet. **The user adds or checks funds at their Zero
+profile: https://zero.xyz/profile.** If a paid call fails for insufficient funds — or you see the
+balance is running low — tell the user plainly and point them to https://zero.xyz/profile to top up.
+Don't run `zero wallet …` yourself, and don't try to move or add funds on the user's behalf.
 
 ### Identify your platform (if not auto-detected)
 
@@ -279,6 +282,9 @@ you have nothing specific. Lost a `runId`? `zero runs --unreviewed` (optionally 
 - **`--json` `body` is already parsed.** Use `bodyRaw` (or `--raw-body`) for literal bytes.
 - **Check `ok`, not `status`.** `ok` is a pre-computed 2xx boolean.
 - **`--max-pay` is your cost guard.** Set it for any unfamiliar capability.
+- **Out of funds or running low?** When a paid call fails for insufficient funds, or the wallet
+  balance is clearly low, stop and tell the user to top up at their Zero profile —
+  https://zero.xyz/profile. The agent never moves or adds funds itself.
 - **Minted token expired or out of budget?** Tokens last ~5 minutes (`expiresAt`) and carry a
   per-token spend cap (`budgetUsdc`, default 5 USDC). Call `mint_runner_session` again for a fresh
   token and overwrite `~/.zero/session` — don't try to keep one alive across a long task.
