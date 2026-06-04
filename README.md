@@ -6,8 +6,8 @@ audio, web scraping, real-time data, messaging, and more — call them, and pay 
 with a wallet. No per-service signup.
 
 This repo is a **cross-agent plugin marketplace**. The same plugin tree publishes to
-**Claude Code**, **OpenAI Codex**, and **Cursor**; each platform reads its own manifest
-and marketplace catalog while sharing one set of components.
+**Claude Code**, **OpenAI Codex**, **Cursor**, and **Gemini CLI**; each platform reads its
+own manifest while sharing one set of components.
 
 ## Layout
 
@@ -20,14 +20,17 @@ zero-plugins/
     ├── .claude-plugin/plugin.json      #   Claude Code manifest
     ├── .codex-plugin/plugin.json       #   Codex manifest
     ├── .cursor-plugin/plugin.json      #   Cursor manifest
+    ├── gemini-extension.json           #   Gemini CLI manifest
     ├── .mcp.json                       #   Zero MCP connector
     └── skills/zero/SKILL.md            #   the zero skill
 ```
 
 A single plugin directory carries one manifest per platform (`.claude-plugin/`,
-`.codex-plugin/`, `.cursor-plugin/`). Each agent reads only its own manifest and ignores
-the others, so the skill, MCP connector, and hooks are authored once and shared. Cursor's
-manifest points `mcpServers` at the same `.mcp.json` the others use.
+`.codex-plugin/`, `.cursor-plugin/`, `gemini-extension.json`). Each agent reads only its
+own manifest and ignores the others, so the skill and MCP connector are authored once and
+shared. The Claude Code and Codex manifests and Cursor's `mcpServers` field all resolve to
+the same `.mcp.json`; Gemini requires its connector declared inline, so the
+`api.zero.xyz/v1/mcp` URL also appears in `gemini-extension.json`.
 
 ## Install
 
@@ -51,6 +54,18 @@ manifest points `mcpServers` at the same `.mcp.json` the others use.
 /add-plugin
 # add this repo as a marketplace source (.cursor-plugin/marketplace.json), then install "zero"
 ```
+
+**Gemini CLI:**
+
+```bash
+git clone https://github.com/spencercharest/zero-plugins
+gemini extensions install --path=zero-plugins/plugins/zero
+```
+
+Gemini installs an extension from the directory holding its `gemini-extension.json`. From
+this monorepo, use the local `--path` form above. (Gemini's git-URL installer
+(`gemini extensions install <url>`) expects the manifest at a repo root, so gallery/Git
+distribution would need a dedicated repo or a release branch — a later step.)
 
 ## The `zero` plugin
 
