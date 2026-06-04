@@ -1,38 +1,46 @@
 #!/usr/bin/env node
 //
-// Zero plugin — remove the CLI-installed ("zero init") Claude Code integration.
+// Zero plugin — remove the CLI-installed ("zero init") integration for the CURRENT
+// host agent only (agent-scoped de-dupe).
 //
-// `zero init` (from the CLI installer) writes a skill at ~/.claude/skills/zero, a
-// UserPromptSubmit reminder, and a PreToolUse auto-approve hook (both pointing at
-// scripts under ~/.zero/hooks/) into the user's ~/.claude. When THIS plugin is also
-// installed, those duplicate the plugin's own integration: the reminder fires twice
-// and the skill loads twice. Claude Code only de-dupes byte-identical hooks, and the
-// CLI's commands point at ~/.zero/hooks/... while the plugin's live in the plugin —
-// different strings, so both fire. This removes the CLI-installed copies so the
-// plugin's are the only ones left.
+// `zero init` copies a skill per agent and (for Claude Code only) registers hooks:
+//   Claude Code -> ~/.claude/skills/zero          + ~/.claude/settings.json hooks
+//   Codex       -> ~/.agents/skills/zero          (the SHARED cross-tool skills dir)
+//   Cursor      -> ~/.cursor/skills/zero
+//   OpenCode    -> ~/.config/opencode/skills/zero
+// plus shared ~/.zero/{config.json (the wallet), hooks/*.sh}.
 //
-// Scope + safety:
-//   - Only removes the skill dir at ~/.claude/skills/zero and settings.json hook
-//     entries whose command references the CLI's own scripts (zero-context /
-//     auto-approve-zero). It never touches the plugin's own hooks, other plugins,
-//     or installed marketplaces (removing a stale marketplace is `/plugin
-//     marketplace remove`, a user action — not this script's job).
-//   - Idempotent: rewrites settings.json only when something actually changed.
-//   - ALL output goes to stderr; stdout stays empty so the SessionStart JSON
-//     contract emitted by ensure-runner.sh is never corrupted.
+// When this plugin is installed it provides the same integration, so the CLI copy
+// duplicates it. We remove ONLY the current host agent's OWN, agent-specific copy:
+//   - Claude Code: ~/.claude/skills/zero + the zero hook entries in settings.json.
+//   - Codex: nothing — Codex's CLI skill lives in the SHARED ~/.agents/skills/zero,
+//     which Warp / Copilot / Replit / Kiro CLI also read; removing it would break
+//     those plugin-less tools, so it is intentionally left in place. (A duplicate
+//     skill is harmless: identical instructions, no double-firing side effects.)
+// We never touch the shared ~/.agents dir, OpenCode, other agents, other plugins,
+// or the wallet (~/.zero/config.json). Cursor cleanup will arrive with the Cursor
+// hook port (a Cursor session removing ~/.cursor/skills/zero).
+//
+// Host detection: Codex sets the neutral PLUGIN_ROOT (alongside CLAUDE_PLUGIN_ROOT,
+// which it also sets for compatibility); Claude Code sets only CLAUDE_PLUGIN_ROOT.
+// So a present PLUGIN_ROOT => Codex. Misdetection fails safe (we just skip).
+//
+// Conservative + idempotent: only removes entries referencing the CLI's own scripts
+// (zero-context / auto-approve-zero), rewrites settings.json only on change. ALL
+// output -> stderr so the SessionStart JSON from ensure-runner.sh is never corrupted.
 
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 const home = homedir();
-const claudeDir = join(home, ".claude");
-const settingsPath = join(claudeDir, "settings.json");
-
 const log = (msg) => process.stderr.write(`[zero] ${msg}\n`);
 
-// True if `entry` (a hooks-array element) contains a command hook whose command
-// string includes `needle` — used to spot the CLI's own hook entries.
+// PLUGIN_ROOT (neutral) present => Codex; otherwise treat the host as Claude Code.
+const host = process.env.PLUGIN_ROOT ? "codex" : "claude";
+
+// True if `entry` (a hooks-array element) has a command hook whose command string
+// includes `needle` — used to spot the CLI's own hook entries.
 const entryHasCommand = (entry, needle) => {
 	const hooks = entry?.hooks;
 	if (!Array.isArray(hooks)) return false;
@@ -42,7 +50,18 @@ const entryHasCommand = (entry, needle) => {
 };
 
 try {
-	// 1. Remove the CLI-installed skill copy — the plugin ships its own.
+	if (host !== "claude") {
+		// Codex (and any other non-Claude host that runs this hook): the CLI skill is
+		// in the shared ~/.agents/skills/zero, deliberately left in place. No-op.
+		log(`de-dupe: host is ${host}; no agent-specific CLI artifacts to remove`);
+		process.exit(0);
+	}
+
+	const claudeDir = join(home, ".claude");
+	const settingsPath = join(claudeDir, "settings.json");
+
+	// 1. Remove the CLI-installed skill copy — the plugin ships its own (the plugin's
+	//    skill lives in the plugin cache, a different directory, so this never hits it).
 	const cliSkillDir = join(claudeDir, "skills", "zero");
 	if (existsSync(cliSkillDir)) {
 		rmSync(cliSkillDir, { recursive: true, force: true });
@@ -67,10 +86,10 @@ try {
 	let changed = false;
 	const hooks = settings.hooks;
 	if (hooks && typeof hooks === "object") {
-		// 2/3. Drop the CLI's UserPromptSubmit reminder (zero-context.sh) and
-		//      PreToolUse auto-approve (auto-approve-zero.sh). Both live under
-		//      ~/.zero/hooks; the plugin's equivalents never live in settings.json,
-		//      so this only ever hits the CLI copies.
+		// 2/3. Drop the CLI's UserPromptSubmit reminder (zero-context.sh) and PreToolUse
+		//      auto-approve (auto-approve-zero.sh). Both live under ~/.zero/hooks; the
+		//      plugin's equivalents never live in settings.json, so this only ever hits
+		//      the CLI copies.
 		for (const [event, needle] of [
 			["UserPromptSubmit", "zero-context"],
 			["PreToolUse", "auto-approve-zero"],

@@ -230,11 +230,12 @@ if [ -n "$OS_KIND" ] && [ -n "$ARCH" ]; then
   NODE_BIN="$(resolve_node || true)"
 fi
 
-# --- remove any CLI-installed ("zero init") integration that would duplicate the
-#     plugin's own (skill + UserPromptSubmit reminder + PreToolUse auto-approve).
-#     Node-gated; prefers the node we just resolved (system or downloaded), else a
-#     system node. Best-effort; its output is forced to stderr so it can't corrupt
-#     the SessionStart JSON below. It never touches other plugins/marketplaces. ---
+# --- remove the CLI-installed ("zero init") integration that would duplicate the
+#     plugin's own, scoped to the current host agent (Claude Code cleans ~/.claude;
+#     Codex no-ops since its CLI skill is in the shared ~/.agents dir). Node-gated;
+#     prefers the node we just resolved (system or downloaded), else a system node.
+#     Best-effort; output forced to stderr so it can't corrupt the SessionStart JSON
+#     below. Never touches other agents, plugins, marketplaces, or the wallet. ---
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 DEDUPE_NODE="${NODE_BIN:-$(command -v node 2>/dev/null || true)}"
 if [ -n "$DEDUPE_NODE" ]; then
