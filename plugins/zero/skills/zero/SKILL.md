@@ -69,24 +69,23 @@ through authorizing the connector — don't just say it's done:
      (`walletAddress`), and you're done.
    - **It's not available, or errors that the connector isn't authorized/connected** → the Zero MCP
      connector hasn't been authorized yet. Walk the user through it (next step).
-3. **Authorize the connector (OAuth) — call the `authenticate` tool; don't punt to `/mcp`.** When the
-   Zero connector (`https://api.zero.xyz/v1/mcp`) is installed but unauthorized, the host exposes an
-   **`authenticate`** tool for it — in Claude Code it's **`mcp__plugin_zero_zero__authenticate`** (the
-   companion is **`complete_authentication`**). This is the reliable way to start the flow; use it
-   instead of telling the user to open `/mcp` settings.
-   - **Call `authenticate`.** It returns an **authorization URL**. Share that URL with the user and ask
-     them to open it and approve.
-   - **Local session:** after they approve, the browser hits a `localhost` callback the host catches
-     automatically and the connector's tools (incl. `begin_session`) activate on their own — just
-     retry `begin_session`.
-   - **Remote / sandbox / web session:** the `localhost` callback page won't load, but the URL in the
-     browser's address bar is still valid. Ask the user to copy that full
-     `http://localhost:<port>/callback?code=…&state=…` URL and pass it to **`complete_authentication`**
-     as `callback_url`. Then retry `begin_session`.
+3. **Authorize the connector (OAuth) — the flow is host-specific; don't punt to `/mcp` settings.** When
+   the Zero connector (`https://api.zero.xyz/v1/mcp`) is installed but unauthorized, start OAuth the way
+   *this* host expects:
+   - **Claude Code** — the host injects an **`authenticate`** tool (`mcp__plugin_zero_zero__authenticate`,
+     companion `complete_authentication`). **Call it.** It returns an **authorization URL**; share it and
+     ask the user to approve. On a **local** session the connector's tools (incl. `begin_session`) then
+     activate automatically — just retry. On a **remote/sandbox** session the `localhost` callback page
+     won't load, but its URL is valid: have the user copy the full
+     `http://localhost:<port>/callback?code=…&state=…` URL and pass it to **`complete_authentication`** as
+     `callback_url`, then retry.
+   - **Codex** — there is **no `authenticate` tool**. Tell the user to run **`codex mcp login zero`** in
+     their terminal to complete OAuth, then retry `begin_session`. (Codex's login currently requires the
+     connector's auth server to support dynamic client registration.)
+   - **Other hosts (Cursor, Gemini, …)** — tell the user to enable **Zero** in their client's
+     connector/MCP settings and finish signing in there, then retry.
 
-   Only if the host exposes no `authenticate` tool, fall back to telling the user to enable **Zero** in
-   their client's connector/MCP settings and finish signing in there. **Never** set up a local wallet
-   or run `zero init` as a workaround.
+   **Never** set up a local wallet or run `zero init` as a workaround on any host.
 4. **Funds.** Once connected, the connector's managed wallet pays per call. To add funds or check a
    balance, point the user to their Zero profile at https://zero.xyz/profile — the agent doesn't
    manage funds.
@@ -153,11 +152,10 @@ The token is **short-lived (~5 minutes — see `expiresAt`) and sign-scoped, wit
 `expiresAt`, or when a payment would exceed `budgetUsdc`.**
 
 **If `begin_session` is unavailable, or it errors that the connector isn't authorized:** the Zero MCP
-connector hasn't been authorized yet. **Start the OAuth flow by calling the connector's `authenticate`
-tool** (Claude Code: `mcp__plugin_zero_zero__authenticate`) — it returns an authorization URL; share
-it, the user approves, and on a local session the tools activate automatically (on a remote session,
-have the user paste the `localhost` callback URL into `complete_authentication`). See "Setting up Zero"
-above for the full flow. Don't just point the user at `/mcp`, and don't fall back to a local wallet.
+connector hasn't been authorized yet. **Start the OAuth flow the way this host expects** (see "Authorize
+the connector (OAuth)" above): in **Claude Code** call the `authenticate` tool; on **Codex** have the
+user run `codex mcp login zero`; on **other hosts** enable Zero in the client's connector/MCP settings.
+Then retry. Don't just point the user at `/mcp`, and don't fall back to a local wallet.
 
 **Isolated config dir.** The plugin's runner runs with its own config directory (under the plugin's
 data dir, removed on uninstall), separate from the CLI's `~/.zero`. It does **not** read or reuse
@@ -272,8 +270,9 @@ you have nothing specific. Lost a `runId`? `zero runs --unreviewed` (optionally 
 
 - **Never provision auth yourself.** Don't run `zero init`, `zero auth login`, `zero wallet …`, or
   `zero welcome`, and don't mention a "welcome bonus." Authenticate only by minting a session with
-  `begin_session`; if it isn't authorized, walk the user through authorizing the Zero MCP
-  connector. The runner uses an isolated, plugin-owned config dir and never reads `~/.zero/config.json`;
+  `begin_session`; if it isn't authorized, walk the user through authorizing the Zero MCP connector the
+  way this host expects (Claude Code: the `authenticate` tool; Codex: `codex mcp login zero` — see
+  "Authorize the connector"). The runner uses an isolated, plugin-owned config dir and never reads `~/.zero/config.json`;
   a BYO key via `ZERO_PRIVATE_KEY` is honored, but never create a wallet.
 - **Read the hook's output first.** In Claude Code / Codex / Cowork the SessionStart hook already
   provisioned the runner and exported `$ZERO_RUNNER` — don't second-guess it or re-bootstrap.
