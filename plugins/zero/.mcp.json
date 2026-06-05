@@ -1,8 +1,6 @@
 {
-  "mcpServers": {
-    "zero": {
-      "type": "http",
-      "url": "https://api.zero.xyz/v1/mcp"
-    }
+  "zero": {
+    "type": "http",
+    "url": "https://api.zero.xyz/v1/mcp"
   }
 }
